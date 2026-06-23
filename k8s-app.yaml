@@ -1,0 +1,112 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-configmap
+  namespace: nagp2026-assignment
+data:
+  mongodb-host: "mongodb-0.mongodb-headless.nagp2026-assignment.svc.cluster.local"
+  mongodb-database: "nagp2026-home-assignment"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-nagp2026-assignment-k8s
+  namespace: nagp2026-assignment
+  labels:
+    app: app-spring-boot-k8s
+spec:
+  replicas: 2 # This should be commented when we have HPA enabled.
+  selector:
+    matchLabels:
+      app: app-spring-boot-k8s
+  template:
+    metadata:
+      labels:
+        app: app-spring-boot-k8s
+    spec:
+      containers:
+        - name: app-spring-boot-k8s
+          image: dv1992/app-nagp2026-assignment-k8s:5.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MONGODB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-configmap
+                  key: mongodb-host
+            - name: MONGODB_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-configmap
+                  key: mongodb-database
+            - name: MONGODB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secretmap
+                  key: mongo-root-username
+            - name: MONGODB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secretmap
+                  key: mongo-root-password
+          livenessProbe:
+            httpGet:
+              path: api/v1/actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: api/v1/actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "200m"  # 200 milli-cores (0.2 of a CPU core)
+              memory: "300Mi" # 300 MiB of memory
+            limits:
+              cpu: "400m"
+              memory: "512Mi" # 512 MiB of memory
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-app-spring-boot-k8s
+  namespace: nagp2026-assignment
+spec:
+  type: ClusterIP
+  selector:
+    app: app-spring-boot-k8s
+  ports:
+    - port: 8081
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-app-spring-boot-k8s
+  namespace: nagp2026-assignment
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: svc-app-spring-boot-k8s
+                port:
+                  number: 8081

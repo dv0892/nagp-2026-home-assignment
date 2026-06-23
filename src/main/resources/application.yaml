@@ -1,0 +1,19 @@
+spring:
+    application:
+        name: spring-boot-k8s
+    mongodb:
+      uri: mongodb://${MONGODB_USERNAME:root}:${MONGODB_PASSWORD:password}@${MONGODB_HOST:localhost}:27017?authSource=admin
+      database: ${MONGODB_DATABASE:nagp2026-local-test}
+
+server:
+  servlet:
+    context-path: "/api/v1"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always

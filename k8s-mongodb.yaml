@@ -1,0 +1,89 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gcp-standard-storage
+provisioner: pd.csi.storage.gke.io
+allowVolumeExpansion: true
+parameters:
+  type: pd-standard
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gke-standard-pvc
+  namespace: nagp2026-assignment
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: gcp-standard-storage # Uses the standard StorageClass
+  resources:
+    requests:
+      storage: 10Gi # Standard tier usually requires 10Gi minimum
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mongodb-secretmap
+  namespace: nagp2026-assignment
+type: Opaque
+stringData:
+  # Kubernetes automatically encodes stringData to base64 upon application
+  mongo-root-username: "adminUser"
+  mongo-root-password: "securePassword12345"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongodb
+  namespace: nagp2026-assignment
+  labels:
+    app: mongodb
+spec:
+  serviceName: "mongodb-headless"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo:6.0 # Specifies official MongoDB image
+          ports:
+            - containerPort: 27017
+              name: mongo-port
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secretmap
+                  key: mongo-root-username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secretmap
+                  key: mongo-root-password
+          volumeMounts:
+            - name: mongodb-data
+              mountPath: /data/db # MongoDB default data directory
+      volumes:
+        - name: mongodb-data
+          persistentVolumeClaim:
+            claimName: gke-standard-pvc # Must match the exact name of your PVC
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-headless # Matches the serviceName below
+  namespace: nagp2026-assignment
+spec:
+  clusterIP: None        # <-- This makes it headless
+  ports:
+    - port: 27017
+      targetPort: 27017
+  selector:
+    app: mongodb
+
