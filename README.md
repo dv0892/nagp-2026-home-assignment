@@ -4,6 +4,8 @@
 
 The application is built to expose REST endpoints for managing academic assignment records with the following capabilities:
 
+Repository Link : https://github.com/dv0892/nagp-2026-home-assignment.git
+
 #### API Endpoints
 
 - **POST /assignments**
@@ -72,7 +74,6 @@ Implementation: `src/main/java/org/nagp2026/dto/AssignmentRequestDTO.java`
 
 - A Kubernetes cluster is available with:
   - An ingress controller installed and configured (e.g., nginx-ingress or cloud provider ingress)
-  - The host `app.nagp2026-assignment.com` is configured to route to the cluster
   - Metrics server or equivalent metrics provider installed for HPA to read CPU utilization
   - A storage provisioner compatible with the configured StorageClass
 
@@ -84,7 +85,7 @@ Implementation: `src/main/java/org/nagp2026/dto/AssignmentRequestDTO.java`
 
 ### Container Image Registry
 
-- The container image `dv1992/app-nagp2026-assignment-k8s:4.0` is accessible from the cluster
+- The container image `dv1992/app-nagp2026-assignment-k8s:5.0` is accessible from the cluster
   - May be pulled from Docker Hub (if public) or requires registry credentials configured in the cluster
 
 - The MongoDB image `mongo:6.0` is accessible (standard official image)
@@ -156,7 +157,7 @@ The solution consists of three main layers:
 
 **Networking:**
 - **Service (ClusterIP)** — exposes application on port 8081 internally, mapped to container port 8080
-- **Ingress** — routes external traffic from host `app.nagp2026-assignment.com` to the service
+- **Ingress** — routes external traffic to the service
 
 **Workload Management:**
 - **Deployment** — manages application replica pods with RollingUpdate strategy
@@ -175,7 +176,7 @@ The solution consists of three main layers:
 ```
 Client Request
     ↓
-Ingress (app.nagp2026-assignment.com)
+Ingress (*)
     ↓
 Service (ClusterIP, port 8081)
     ↓
