@@ -8,6 +8,8 @@ Repository Link : https://github.com/dv0892/nagp-2026-home-assignment.git
 
 Dockerhub URL Images Link : https://hub.docker.com/repository/docker/dv1992/app-nagp2026-assignment-k8s/
 
+URL for Service API tier to view the records : http://<INGRESS_IP>/api/v1/assignments
+
 ## Reference Files
 
 - **Application Source**: `src/main/java/org/nagp2026/`
