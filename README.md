@@ -6,6 +6,15 @@ The application is built to expose REST endpoints for managing academic assignme
 
 Repository Link : https://github.com/dv0892/nagp-2026-home-assignment.git
 
+## Reference Files
+
+- **Application Source**: `src/main/java/org/nagp2026/`
+- **Kubernetes Manifests**: `k8s-*.yaml`
+- **Build Configuration**: `build.gradle`
+- **Docker**: `Dockerfile`
+
+---
+
 #### API Endpoints
 
 - **POST /assignments**
@@ -620,14 +629,5 @@ kubectl get pods -n nagp2026-assignment --watch
 ```
 
 After a few minutes, replica count should increase as CPU utilization rises above 50% target; it will decrease when load stops.
-
----
-
-## Reference Files
-
-- **Application Source**: `src/main/java/org/nagp2026/`
-- **Kubernetes Manifests**: `k8s-*.yaml`
-- **Build Configuration**: `build.gradle`
-- **Docker**: `Dockerfile`
 
 ---
