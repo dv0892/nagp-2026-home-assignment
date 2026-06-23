@@ -6,6 +6,8 @@ The application is built to expose REST endpoints for managing academic assignme
 
 Repository Link : https://github.com/dv0892/nagp-2026-home-assignment.git
 
+Dockerhub URL Images Link : https://hub.docker.com/repository/docker/dv1992/app-nagp2026-assignment-k8s/
+
 ## Reference Files
 
 - **Application Source**: `src/main/java/org/nagp2026/`
