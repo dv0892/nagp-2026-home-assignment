@@ -1,38 +1,3 @@
-# Project Understanding and Documentation
-
-## Quick Reference Commands
-
-### MongoDB Operations
-
-#### Test MongoDB Connectivity
-```powershell
-kubectl exec -n nagp2026-assignment -it mongodb-0 -- mongosh -u adminUser -p securePassword123 --eval "db.adminCommand('ping')"
-```
-
-#### Connect to MongoDB from a Client Pod
-```powershell
-kubectl run mongo-test-client -n nagp2026-assignment --rm -it --image=mongo:6.0 -- bash
-mongosh "mongodb://adminUser:securePassword12345@mongodb-0.mongodb-headless.nagp2026-assignment.svc.cluster.local:27017/?authSource=admin"
-```
-
-#### Connect to MongoDB from Outside the Cluster
-```powershell
-# Terminal 1: Set up port forwarding
-kubectl port-forward pod/mongodb-0 27017:27017 -n nagp2026-assignment
-
-# Terminal 2: Connect using MongoDB client on local machine
-# Connection string: mongodb://adminUser:securePassword12345@localhost:27017/?authSource=admin
-```
-
-### Application Testing
-
-#### Test HPA Load Generation
-```powershell
-kubectl run load-generator --rm -i --tty --image=busybox:1.36 --restart=Never -- /bin/sh -c "while true; do wget -q -O- http://8.233.80.16/api/v1/assignments --header 'Host: app.nagp2026-assignment.com'; done"
-```
-
----
-
 ## Requirement Understanding
 
 ### Functional Requirements
@@ -230,7 +195,7 @@ MongoDB StatefulSet (persistence via PVC)
 #### Create Assignment
 
 ```http
-POST /assignments HTTP/1.1
+POST api/v1/assignments HTTP/1.1
 Content-Type: application/json
 
 {
@@ -254,25 +219,25 @@ Content-Type: application/json
 #### List All Assignments
 
 ```http
-GET /assignments HTTP/1.1
+GET api/v1/assignments HTTP/1.1
 ```
 
 #### Filter by Student
 
 ```http
-GET /assignments?studentName=Alice%20Johnson HTTP/1.1
+GET api/v1/assignments?studentName=Alice%20Johnson HTTP/1.1
 ```
 
 #### Filter by Topic
 
 ```http
-GET /assignments?topicName=Kubernetes%20Orchestration HTTP/1.1
+GET api/v1/assignments?topicName=Kubernetes%20Orchestration HTTP/1.1
 ```
 
 #### Filter by Minimum Score
 
 ```http
-GET /assignments?minScore=80 HTTP/1.1
+GET api/v1/assignments?minScore=80 HTTP/1.1
 ```
 
 ---
@@ -486,8 +451,8 @@ data:
 
 ```yaml
 stringData:
-  mongo-root-username: "adminUser"
-  mongo-root-password: "securePassword12345"
+  mongo-root-username: "SAMPLE_USER"
+  mongo-root-password: "SAMPLE_PASSWORD45"
 ```
 
 **Rationale:**
@@ -544,7 +509,7 @@ kubectl get statefulset -n nagp2026-assignment
 kubectl get pvc -n nagp2026-assignment
 
 # Test MongoDB connectivity
-kubectl exec -n nagp2026-assignment -it mongodb-0 -- mongosh -u adminUser -p securePassword123 --eval "db.adminCommand('ping')"
+kubectl exec -n nagp2026-assignment -it mongodb-0 -- mongosh -u SAMPLE_USER -p SAMPLE_PASSWORD --eval "db.adminCommand('ping')"
 ```
 
 #### 3. Deploy Application
@@ -602,7 +567,7 @@ $body = @{
     score = 92
 } | ConvertTo-Json
 
-Invoke-WebRequest -Uri "http://localhost:8081/assignments" `
+Invoke-WebRequest -Uri "http://localhost:8081/api/v1/assignments" `
   -Method POST `
   -ContentType "application/json" `
   -Body $body `
@@ -612,21 +577,21 @@ Invoke-WebRequest -Uri "http://localhost:8081/assignments" `
 #### List All Assignments
 
 ```powershell
-Invoke-WebRequest -Uri "http://localhost:8081/assignments" `
+Invoke-WebRequest -Uri "http://localhost:8081/api/v1/assignments" `
   -Method GET | Select-Object -ExpandProperty Content | ConvertFrom-Json | ConvertTo-Json -Depth 2
 ```
 
 #### Filter by Student Name
 
 ```powershell
-Invoke-WebRequest -Uri "http://localhost:8081/assignments?studentName=Alice%20Johnson" `
+Invoke-WebRequest -Uri "http://localhost:8081/api/v1/assignments?studentName=Alice%20Johnson" `
   -Method GET | Select-Object -ExpandProperty Content | ConvertFrom-Json | ConvertTo-Json -Depth 2
 ```
 
 #### Filter by Minimum Score
 
 ```powershell
-Invoke-WebRequest -Uri "http://localhost:8081/assignments?minScore=80" `
+Invoke-WebRequest -Uri "http://localhost:8081/api/v1/assignments?minScore=80" `
   -Method GET | Select-Object -ExpandProperty Content | ConvertFrom-Json | ConvertTo-Json -Depth 2
 ```
 
@@ -640,7 +605,7 @@ kubectl run load-generator --rm -i --tty `
   --image=busybox:1.36 `
   --restart=Never `
   -n nagp2026-assignment `
-  -- /bin/sh -c 'while true; do wget -q -O- http://svc-app-spring-boot-k8s:8081/assignments; done'
+  -- /bin/sh -c 'while true; do wget -q -O- http://<INGRESS_IP>/api/v1/assignments; done'
 ```
 
 In another terminal, monitor HPA and pods:
@@ -657,125 +622,6 @@ After a few minutes, replica count should increase as CPU utilization rises abov
 
 ---
 
-## Recommendations for Production
-
-### Security Enhancements
-
-1. **Secrets Management**
-   - Migrate from Kubernetes Secrets to external secret managers
-   - Enable Kubernetes secret encryption at rest
-   - Implement automated secret rotation every 90 days
-   - Use least-privileged database users (not root)
-
-2. **Network Security**
-   - Enable NetworkPolicies to restrict traffic:
-     - App pods can only reach MongoDB pods
-     - Database pods only accept from app pods
-   - Use Ingress TLS termination with valid certificates
-   - Implement ingress authentication (OAuth2, OIDC)
-
-3. **RBAC & Access Control**
-   - Create service accounts with minimal required permissions
-   - Audit all API access via audit logging
-   - Implement Pod Security Policies or Pod Security Standards
-
-### Observability & Monitoring
-
-1. **Logging**
-   - Aggregate application logs to centralized logging system (ELK, EFK, Loki)
-   - Configure structured JSON logging from Spring Boot
-   - Retain logs for at least 30 days for compliance
-
-2. **Metrics & Monitoring**
-   - Export JVM metrics via Micrometer + Prometheus endpoint
-   - Set up Prometheus scrape config for the application
-   - Create Grafana dashboards for:
-     - Request rate, latency (p50, p95, p99)
-     - JVM heap usage, GC frequency
-     - MongoDB query latency and document counts
-     - HPA metrics and scaling decisions
-
-3. **Alerting**
-   - Alert on pod restart loops
-   - Alert on sustained high CPU or memory usage
-   - Alert on MongoDB disk usage >70%
-   - Alert on application error rate >1%
-   - Alert on end-to-end request latency p99 > SLA threshold
-
-### Database Optimization
-
-1. **Indexing**
-   - Create MongoDB indexes on frequently queried fields:
-     ```
-     db.assignments.createIndex({ "student_name": 1 })
-     db.assignments.createIndex({ "topic": 1 })
-     db.assignments.createIndex({ "score": 1 })
-     ```
-   - Monitor index usage and remove unused indexes
-
-2. **Backup & Disaster Recovery**
-   - Implement daily MongoDB backups (snapshots or mongodump)
-   - Store backups in geographically distributed locations
-   - Test restore procedures regularly
-   - Document RTO/RPO requirements and validate compliance
-
-3. **Performance Tuning**
-   - Monitor MongoDB slow query logs
-   - Optimize queries identified as slow
-   - Consider READ/WRITE preference configurations for replica sets
-
-### Application Hardening
-
-1. **JVM Configuration**
-   - Set `-Xms` close to requests value to reduce startup GC pause
-   - Set `-Xmx` near limits to prevent OOM kills
-   - Configure GC logs for diagnostics: `-Xlog:gc*:file=gc.log`
-   - Profile memory usage under peak load
-
-2. **Readiness Gating**
-   - Extend readiness probe to verify database connectivity
-   - Prevent traffic routing until all initialization complete
-   - Consider graceful shutdown to drain connections
-
-3. **Rate Limiting & Circuit Breaker**
-   - Implement API rate limiting per client
-   - Add circuit breaker for MongoDB connection pool
-   - Gracefully degrade on database unavailability
-
-### High Availability & Disaster Recovery
-
-1. **Multi-Replica MongoDB**
-   - Consider MongoDB ReplicaSet for HA (scale StatefulSet replicas to 3)
-   - Enables automatic failover and read scaling
-
-2. **Multi-Zone Deployment**
-   - Deploy pods across multiple zones/nodes
-   - Configure Pod Disruption Budgets (PDB) to maintain minimum replicas during maintenance
-   - Ensure node affinity rules spread load
-
-3. **Infrastructure as Code**
-   - Use Helm or Kustomize to manage Kubernetes manifests
-   - Version control all configuration changes
-   - Implement GitOps for infrastructure deployments
-
-### Cost Optimization
-
-1. **Resource Right-Sizing**
-   - Baseline load testing to determine minimum viable requests/limits
-   - Reduce over-provisioned resources without sacrificing availability
-   - Monitor actual vs. requested resource usage regularly
-
-2. **Auto-Scaling Tuning**
-   - Monitor HPA scaling decisions and adjust CPU target if under/over-scaling occurs
-   - Consider predictive scaling during known peak times
-
-3. **Storage Optimization**
-   - Implement MongoDB compression for index/data
-   - Set TTL on audit logs and temporary collections
-   - Monitor disk usage growth and plan expansions
-
----
-
 ## Reference Files
 
 - **Application Source**: `src/main/java/org/nagp2026/`
@@ -784,14 +630,4 @@ After a few minutes, replica count should increase as CPU utilization rises abov
 - **Docker**: `Dockerfile`
 
 ---
-
-## Document Metadata
-
-- **Author**: NAGP 2026 Assignment Team
-- **Date Created**: June 23, 2026
-- **Last Updated**: June 23, 2026
-- **Kubernetes Version**: 1.24+
-- **Spring Boot Version**: 3.x (inferred from Jakarta APIs)
-- **Java Version**: 17+
-- **Database**: MongoDB 6.0
 
